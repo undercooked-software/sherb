@@ -1,123 +1,136 @@
 
 /*
- * Usage: sherb(.exe) [-v | --version] [--quiet] [-d [drive_letters...]]
+ * Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]
  * Max possible command length is 73chars
  */
 
+//-q = quiet (no beep)
+//-h = help (expl)
+
 #if 0 // DEBUGGING
-#ifdef UNICODE
-# undef UNICODE
-#endif
+#undef UNICODE
 #endif
 
-#define global  static
-#define i32     int
+#define global        static
 
 #define MAKE_CHARS(x)   MAKE_CHARS_(x)
 #define MAKE_CHARS_(x)  #x
 
 #ifdef UNICODE
-# define SHERB_FUNC(x)  w##x
+# define SHERB_main           wmain
+# define SHERB_mainCRTStartup wmainCRTStartup
+# define CommandLineToArgv    CommandLineToArgvW
+# define SHEmptyRecycleBin    SHEmptyRecycleBinW
 #else
-# define SHERB_FUNC(x)  x
+# define SHERB_main           main
+# define SHERB_mainCRTStartup mainCRTStartup
+# define CommandLineToArgv    CommandLineToArgvA_wine
+# define SHEmptyRecycleBin    SHEmptyRecycleBinA
 #endif
 
-#define _NO_CRT_STDIO_INLINE
-#include <stdio.h>
+// <windows.h> can't compile with /Za flag to enforce c89 standard.
+// The only work around I found was to create separate compilation units.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <shellapi.h>
 
-// WIN32_LEAN_AND_MEAN undefines shellapi.h definitions. Redefine what we need.
-//#define SHERB_NOCONFIRMATION  1
-//#define SHERB_NOPROGRESSUI    2
-//#define SHERB_NOSOUND         4
+#define SHERB_NOCONFIRMATION  1
+#define SHERB_NOPROGRESSUI    2
+#define SHERB_NOSOUND         4
 
 // https://stackoverflow.com/a/2348447 - WINAPI is __stdcall
 // https://tinyurl.com/yckp42s2 - EmptyRecycleBin returns HRESULT
 // https://stackoverflow.com/a/46457146 - LPCTSTR changes on UNICODE define
-typedef HRESULT (WINAPI *PSHERB)(HWND, LPCTSTR, DWORD);
+typedef HRESULT   (WINAPI *PSHERB)(HWND, LPCTSTR, DWORD);
+typedef LPWSTR *  (WINAPI *PARGVW)(LPCWSTR, int *);
 
-global HANDLE pCout;
+global HANDLE   SHERB_OUTPUT_HANDLE;
+global HMODULE  SHERB_SHELL32;
+
+global LPCTSTR SHERB_USAGE = 
+  TEXT("Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]\n");
+
+void
+SHERB_WriteConsole(LPCTSTR str) {
+  if (!SHERB_OUTPUT_HANDLE)
+    return;
+
+  WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
+}
 
 // LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define
 int
-SHERB_FUNC(main)(int argc, LPTSTR argv[]) {
-  HMODULE sh32;
+SHERB_main(int argc, LPTSTR argv[]) {
   PSHERB pSHERB;
   DWORD dwFlags;
   int isQuiet = 0;
 
   if (argc > 1) {
-    //WriteConsole(pCout, argv[0], 9, 0, 0);
-    printf("%ws\n", argv[0]);
-    /*if ((!strcmp(argv[1], "-v")) || (!strcmp(argv[1], "--version"))) {
-      return puts("SHERB 1.0.0");
-    }*/
+    if (!lstrcmp(argv[1], TEXT("-V"))) {
+      return SHERB_WriteConsole(TEXT("SHERB 1.0.0\n"));
+    }
 
-    /*if (!strcmp(argv[1], "--quiet")) {
+    if (!lstrcmp(argv[1], TEXT("-q"))) {
       isQuiet = 1;
-    }*/
+    }
   }
 
-  sh32 = LoadLibrary(TEXT("shell32.dll"));
-  if (!sh32) {
-    puts("Failed to locate shell32.dll within System32.");
-    return GetLastError();
-  }
-
-  pSHERB = (PSHERB)GetProcAddress(sh32, MAKE_CHARS(SHEmptyRecycleBin));
-  if (!pSHERB) {
-    puts("Could not get the function address for SHEmptyRecycleBin.");
-    return GetLastError();
-  }
-  
   dwFlags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI;
   if (isQuiet)
     dwFlags |= SHERB_NOSOUND;
 
-  pSHERB(0, 0, dwFlags);
-  // We'll need to iterate across multiple drives in the future.
-  // We need to implement SHQueryRecycleBin
-  //pSHERB(0, TEXT("C:/"), SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI);
+  pSHERB = (PSHERB)GetProcAddress(SHERB_SHELL32, MAKE_CHARS(SHEmptyRecycleBin));
+  if (!pSHERB)
+    return GetLastError();
 
-  Sleep(1000);
+  pSHERB(0, 0, dwFlags);
+
+  // TODO: See if we can figure out a way to avoid this sleep. Threading? Fork?
+  if (!isQuiet)
+    Sleep(1000);
 }
 
-/*LPSTR *
-CommandLineToArgvA(LPCSTR lpCmdLine, int *pNumArgs) {
-  // This is not a proper implementation and is built specifically for SHERB.
-  enum { kMaxArgs = 4 };
-  //LPSTR 
-}*/
+// : Write our own custom solution based on our data needs.
+// The version taken here is modified from the WINE project.
+// It's a modification of the CommandLineToArgvW implementation.
+#ifndef UNICODE
+  #include "CommandLineToArgvA.c"
+#endif
 
 int
 _init_args(LPTSTR **argv) {
-  int argc;
-  // We need to write our own version of CommandLineToArgvA
-  *argv = CommandLineToArgvW(GetCommandLine(), &argc);
-  //*argv = args;
+  int argc = 0;
+
+#ifdef UNICODE
+  PARGVW CommandLineToArgvW;
+  CommandLineToArgvW =
+    (PARGVW)GetProcAddress(SHERB_SHELL32, MAKE_CHARS(CommandLineToArgv));
+  if (!CommandLineToArgvW)
+    return GetLastError();
+#endif
+
+  *argv = CommandLineToArgv(GetCommandLine(), &argc);
   return argc;
 }
 
 int __cdecl
-SHERB_FUNC(mainCRTStartup)(void) {
+SHERB_mainCRTStartup(void) {
   LPTSTR *argv;
   int argc;
   int ret;
 
-  pCout = GetStdHandle(STD_OUTPUT_HANDLE);
-  if ((!pCout) && (pCout != INVALID_HANDLE_VALUE)) {
+  SHERB_OUTPUT_HANDLE = GetStdHandle(STD_OUTPUT_HANDLE);
+  if ((!SHERB_OUTPUT_HANDLE) && (SHERB_OUTPUT_HANDLE != INVALID_HANDLE_VALUE))
     ExitProcess(GetLastError());
-  }
+
+  SHERB_SHELL32 = LoadLibrary(TEXT("shell32.dll"));
+  if (!SHERB_SHELL32)
+    ExitProcess(GetLastError());
 
   argv = 0;
   argc = _init_args(&argv);
-  if (!argc) {
-    // Somehow we have no arguments?
+  if (!argc)
     ExitProcess(GetLastError());
-  }
-  ret = SHERB_FUNC(main)(argc, argv);
+  ret = SHERB_main(argc, argv);
   LocalFree(argv); // Might not be necessary.
   ExitProcess(ret);
 }
