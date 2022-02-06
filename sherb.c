@@ -4,14 +4,12 @@
  * Max possible command length is 73chars
  */
 
-//-q = quiet (no beep)
-//-h = help (expl)
 
-#if 0 // DEBUGGING
+#if 1 // DEBUGGING
 #undef UNICODE
 #endif
 
-#define global        static
+#define global static
 
 #define MAKE_CHARS(x)   MAKE_CHARS_(x)
 #define MAKE_CHARS_(x)  #x
@@ -33,6 +31,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+// WIN32_LEAN_AND_MEAN forces no inclusion of shellapi.h, among other things.
+// Redefine the few constants we need.
 #define SHERB_NOCONFIRMATION  1
 #define SHERB_NOPROGRESSUI    2
 #define SHERB_NOSOUND         4
@@ -40,8 +40,8 @@
 // https://stackoverflow.com/a/2348447 - WINAPI is __stdcall
 // https://tinyurl.com/yckp42s2 - EmptyRecycleBin returns HRESULT
 // https://stackoverflow.com/a/46457146 - LPCTSTR changes on UNICODE define
-typedef HRESULT   (WINAPI *PSHERB)(HWND, LPCTSTR, DWORD);
-typedef LPWSTR *  (WINAPI *PARGVW)(LPCWSTR, int *);
+typedef HRESULT   (WINAPI *pSHEmptyRecycleBin)(HWND, LPCTSTR, DWORD);
+typedef LPWSTR *  (WINAPI *pCommandLineToArgvW)(LPCWSTR, int *);
 
 global HANDLE   SHERB_OUTPUT_HANDLE;
 global HMODULE  SHERB_SHELL32;
@@ -60,7 +60,7 @@ SHERB_WriteConsole(LPCTSTR str) {
 // LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define
 int
 SHERB_main(int argc, LPTSTR argv[]) {
-  PSHERB pSHERB;
+  pSHEmptyRecycleBin sherb;
   DWORD dwFlags;
   int isQuiet = 0;
 
@@ -68,7 +68,6 @@ SHERB_main(int argc, LPTSTR argv[]) {
     if (!lstrcmp(argv[1], TEXT("-V"))) {
       return SHERB_WriteConsole(TEXT("SHERB 1.0.0\n"));
     }
-
     if (!lstrcmp(argv[1], TEXT("-q"))) {
       isQuiet = 1;
     }
@@ -78,18 +77,20 @@ SHERB_main(int argc, LPTSTR argv[]) {
   if (isQuiet)
     dwFlags |= SHERB_NOSOUND;
 
-  pSHERB = (PSHERB)GetProcAddress(SHERB_SHELL32, MAKE_CHARS(SHEmptyRecycleBin));
-  if (!pSHERB)
+  sherb =
+    (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32, 
+                                       MAKE_CHARS(SHEmptyRecycleBin));
+  if (!sherb)
     return GetLastError();
 
-  pSHERB(0, 0, dwFlags);
+  sherb(0, 0, dwFlags);
 
   // TODO: See if we can figure out a way to avoid this sleep. Threading? Fork?
   if (!isQuiet)
     Sleep(1000);
 }
 
-// : Write our own custom solution based on our data needs.
+// TODO(sammynilla): Write our own custom solution based on our data needs.
 // The version taken here is modified from the WINE project.
 // It's a modification of the CommandLineToArgvW implementation.
 #ifndef UNICODE
@@ -101,9 +102,10 @@ _init_args(LPTSTR **argv) {
   int argc = 0;
 
 #ifdef UNICODE
-  PARGVW CommandLineToArgvW;
+  pCommandLineToArgvW CommandLineToArgvW;
   CommandLineToArgvW =
-    (PARGVW)GetProcAddress(SHERB_SHELL32, MAKE_CHARS(CommandLineToArgv));
+    (pCommandLineToArgvW)GetProcAddress(SHERB_SHELL32,
+                                        MAKE_CHARS(CommandLineToArgv));
   if (!CommandLineToArgvW)
     return GetLastError();
 #endif
