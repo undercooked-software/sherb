@@ -51,9 +51,6 @@ global LPCTSTR SHERB_USAGE =
 
 void
 SHERB_WriteConsole(LPCTSTR str) {
-  if (!SHERB_OUTPUT_HANDLE)
-    return;
-
   WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
 }
 
