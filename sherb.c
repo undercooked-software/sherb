@@ -1,6 +1,7 @@
 
 #define global static
 #define i32 int
+#define b32 int
 #define elif else if
 
 #define MAKE_CHARS(x)   MAKE_CHARS_(x)
@@ -65,7 +66,8 @@ SHERB_main(int argc, LPTSTR argv[]) {
   pSHEmptyRecycleBin sherb;
   enum { AB_LEN = 26, DDR_LEN = 51 };
   TCHAR drive[AB_LEN] = {0};
-  i32 isQuiet = 0;
+  b32 quietFlag = 0;
+  b32 driveFlag = 0;
   i32 ddrLen;
 
   if (argc > 4)
@@ -80,42 +82,49 @@ SHERB_main(int argc, LPTSTR argv[]) {
     } elif (!lstrcmp(argv[index], TEXT("-h"))) {
       return SHERB_WriteConsole(SHERB_HELP);
     } elif (!lstrcmp(argv[index], TEXT("-q"))) {
-      isQuiet = 1;
+      quietFlag = 1;
       ++index;
-      if (lstrcmp(argv[index], TEXT("-d")) != 0)
-        return SHERB_WriteConsole(SHERB_USAGE);
-      // arg[2] is -d
-      ++index;
+      if (index != argc) {
+        if (!lstrcmp(argv[index], TEXT("-d"))) {
+          driveFlag = 1;
+          ++index;
+        } else {
+          return SHERB_WriteConsole(SHERB_USAGE);
+        }
+      }
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
         return SHERB_WriteConsole(SHERB_USAGE);
       // arg[1] is -d
+      driveFlag = 1;
       ++index;
     }
 
     // Extra args we don't want.
-    if (index+1 != argc)
-      return SHERB_WriteConsole(SHERB_USAGE);
-    // Check if delimited drive string contains more characters than permitted.
-    ddrLen = lstrlen(argv[index]);
-    if (ddrLen > DDR_LEN)
-      return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
-    // Let's santize our string
-    {
-      i32 c, i;
-      c = i = 0;
-      for (; c < ddrLen; ++c) {
-        switch ((c % 2)) {
-          case 0: {
-            if (!IsCharAlpha(argv[index][c]))
-              return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
-            drive[i] = argv[index][c];
-            ++i;
-          } break;
-          case 1: {
-            if (!IS_DELIMETER(argv[index][c]))
-              return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
-          } break;
+    if (driveFlag) {
+      if (index+1 != argc)
+        return SHERB_WriteConsole(SHERB_USAGE);
+      // Check if delimited drive string contains more characters than permitted.
+      ddrLen = lstrlen(argv[index]);
+      if (ddrLen > DDR_LEN)
+        return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
+      // Let's santize our string
+      {
+        i32 c, i;
+        c = i = 0;
+        for (; c < ddrLen; ++c) {
+          switch ((c % 2)) {
+            case 0: {
+              if (!IsCharAlpha(argv[index][c]))
+                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+              drive[i] = argv[index][c];
+              ++i;
+            } break;
+            case 1: {
+              if (!IS_DELIMETER(argv[index][c]))
+                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+            } break;
+          }
         }
       }
     }
@@ -132,10 +141,10 @@ SHERB_main(int argc, LPTSTR argv[]) {
     TCHAR path[4] = { '?', ':', '\\', '\0', };
     const DWORD dwFlags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI;
     if (IS_TERMINATOR(drive[0])) {
-      sherb(0, 0, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
+      sherb(0, 0, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
     } else {
       path[0] = *d;
-      sherb(0, path, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
+      sherb(0, path, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
       d++;
       while (*d && !IS_TERMINATOR(*d)) {
         path[0] = *d;
@@ -146,7 +155,7 @@ SHERB_main(int argc, LPTSTR argv[]) {
   }
 
   // TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork?
-  if (!isQuiet)
+  if (!quietFlag)
     Sleep(1000);
 }
 
