@@ -1,18 +1,13 @@
 
-/*
- * Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]
- * Max possible command length is 73chars
- */
-
-
-#if 1 // DEBUGGING
-#undef UNICODE
-#endif
-
 #define global static
+#define i32 int
+#define elif else if
 
 #define MAKE_CHARS(x)   MAKE_CHARS_(x)
 #define MAKE_CHARS_(x)  #x
+
+#define IS_DELIMETER(c)   (c == ',')
+#define IS_TERMINATOR(c)  (c == '\0')
 
 #ifdef UNICODE
 # define SHERB_main           wmain
@@ -26,7 +21,7 @@
 # define SHEmptyRecycleBin    SHEmptyRecycleBinA
 #endif
 
-// <windows.h> can't compile with /Za flag to enforce c89 standard.
+// <windows.h> can't compile with /Za flag to enforce c89.
 // The only work around I found was to create separate compilation units.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -46,8 +41,18 @@ typedef LPWSTR *  (WINAPI *pCommandLineToArgvW)(LPCWSTR, int *);
 global HANDLE   SHERB_OUTPUT_HANDLE;
 global HMODULE  SHERB_SHELL32;
 
-global LPCTSTR SHERB_USAGE = 
+global LPCTSTR SHERB_USAGE =
   TEXT("Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]\n");
+global LPCTSTR SHERB_BAD_DDR_LEN =
+  TEXT("ERROR: Your delimited drive list contains more than 51 characters.\n");
+global LPCTSTR SHERB_MALFORMED_DDR =
+  TEXT("ERROR: Your delimited drive list is malformed.\n");
+global LPCTSTR SHERB_HELP =
+  TEXT("Help Text\n");
+global LPCTSTR SHERB_LICENSE =
+  TEXT("License Text\n");
+global LPCTSTR SHERB_VERSION =
+  TEXT("SHERB 1.0.0\n");
 
 void
 SHERB_WriteConsole(LPCTSTR str) {
@@ -58,31 +63,91 @@ SHERB_WriteConsole(LPCTSTR str) {
 int
 SHERB_main(int argc, LPTSTR argv[]) {
   pSHEmptyRecycleBin sherb;
-  DWORD dwFlags;
-  int isQuiet = 0;
+  enum { AB_LEN = 26, DDR_LEN = 51 };
+  TCHAR drive[AB_LEN] = {0};
+  i32 isQuiet = 0;
+  i32 ddrLen;
+
+  if (argc > 4)
+    return SHERB_WriteConsole(SHERB_USAGE);
 
   if (argc > 1) {
-    if (!lstrcmp(argv[1], TEXT("-V"))) {
-      return SHERB_WriteConsole(TEXT("SHERB 1.0.0\n"));
-    }
-    if (!lstrcmp(argv[1], TEXT("-q"))) {
+    i32 index = 1;
+    if (!lstrcmp(argv[index], TEXT("-V"))) {
+      return SHERB_WriteConsole(SHERB_VERSION);
+    } elif (!lstrcmp(argv[index], TEXT("-L"))) {
+      return SHERB_WriteConsole(SHERB_LICENSE);
+    } elif (!lstrcmp(argv[index], TEXT("-h"))) {
+      return SHERB_WriteConsole(SHERB_HELP);
+    } elif (!lstrcmp(argv[index], TEXT("-q"))) {
       isQuiet = 1;
+      ++index;
+      if (lstrcmp(argv[index], TEXT("-d")) != 0)
+        return SHERB_WriteConsole(SHERB_USAGE);
+      // arg[2] is -d
+      ++index;
+    } else {
+      if (lstrcmp(argv[index], TEXT("-d")) != 0)
+        return SHERB_WriteConsole(SHERB_USAGE);
+      // arg[1] is -d
+      ++index;
+    }
+
+    // Extra args we don't want.
+    if (index+1 != argc)
+      return SHERB_WriteConsole(SHERB_USAGE);
+    // Check if delimited drive string contains more characters than permitted.
+    ddrLen = lstrlen(argv[index]);
+    if (ddrLen > DDR_LEN)
+      return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
+    // Let's santize our string
+    {
+      i32 c, i;
+      c = i = 0;
+      for (; c < ddrLen; ++c) {
+        switch ((c % 2)) {
+          case 0: {
+            if (!IsCharAlpha(argv[index][c]))
+              return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+            drive[i] = argv[index][c];
+            ++i;
+          } break;
+          case 1: {
+            if (!IS_DELIMETER(argv[index][c]))
+              return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+          } break;
+        }
+      }
     }
   }
 
-  dwFlags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI;
-  if (isQuiet)
-    dwFlags |= SHERB_NOSOUND;
-
   sherb =
-    (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32, 
+    (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32,
                                        MAKE_CHARS(SHEmptyRecycleBin));
   if (!sherb)
     return GetLastError();
 
-  sherb(0, 0, dwFlags);
+  {
+    TCHAR *d = drive;
+    TCHAR path[4] = { '?', ':', '\\', '\0', };
+    const DWORD dwFlags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI;
+    if (IS_TERMINATOR(drive[0])) {
+      sherb(0, 0, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
+    } else {
+      path[0] = *d;
+      if (isQuiet) {
+        sherb(0, path, dwFlags | SHERB_NOSOUND);
+        d++;
+      }
+      while (*d && !IS_TERMINATOR(*d)) {
+        path[0] = *d;
+        sherb(0, path, dwFlags);
+        d++;
+      }
+    }
+  }
 
-  // TODO: See if we can figure out a way to avoid this sleep. Threading? Fork?
+  // TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork?
   if (!isQuiet)
     Sleep(1000);
 }
@@ -104,7 +169,7 @@ _init_args(LPTSTR **argv) {
     (pCommandLineToArgvW)GetProcAddress(SHERB_SHELL32,
                                         MAKE_CHARS(CommandLineToArgv));
   if (!CommandLineToArgvW)
-    return GetLastError();
+    return argc; // argc is 0 here.
 #endif
 
   *argv = CommandLineToArgv(GetCommandLine(), &argc);
@@ -130,6 +195,12 @@ SHERB_mainCRTStartup(void) {
   if (!argc)
     ExitProcess(GetLastError());
   ret = SHERB_main(argc, argv);
-  LocalFree(argv); // Might not be necessary.
+  /* NOTE (sammynilla):
+   * CommandLineToArgv(A/W) both use LocalAlloc to designate a contiginous block
+   * of memory that is used store our argument strings.
+   * LocalFree is used to free that memory, but doesn't a program that finishes
+   * its execution already release it's own memory? It may not be necessary.
+   */
+  LocalFree(argv);
   ExitProcess(ret);
 }
