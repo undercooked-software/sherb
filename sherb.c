@@ -134,18 +134,18 @@ SHERB_main(int argc, LPTSTR argv[]) {
     if (IS_TERMINATOR(drive[0])) {
       sherb(0, 0, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
     } else {
+      // We only want the first sherb to produce sound if prompted.
       path[0] = *d;
-      if (isQuiet) {
-        sherb(0, path, dwFlags | SHERB_NOSOUND);
-        d++;
-      }
+      sherb(0, path, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
+      d++;
       while (*d && !IS_TERMINATOR(*d)) {
         path[0] = *d;
-        sherb(0, path, dwFlags);
+        sherb(0, path, dwFlags | SHERB_NOSOUND);
         d++;
       }
     }
   }
+  
 
   // TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork?
   if (!isQuiet)
