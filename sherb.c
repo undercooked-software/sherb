@@ -135,13 +135,11 @@ SHERB_main(int argc, LPTSTR argv[]) {
       sherb(0, 0, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
     } else {
       path[0] = *d;
-      if (isQuiet) {
-        sherb(0, path, dwFlags | SHERB_NOSOUND);
-        d++;
-      }
+      sherb(0, path, (isQuiet) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
+      d++;
       while (*d && !IS_TERMINATOR(*d)) {
         path[0] = *d;
-        sherb(0, path, dwFlags);
+        sherb(0, path, dwFlags | SHERB_NOSOUND);
         d++;
       }
     }
