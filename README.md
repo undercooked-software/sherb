@@ -11,7 +11,7 @@ Below are examples of how to use all commands inside of `sherb`...
 * `sherb -V` – Prints the current sherb version to the terminal.
 * `sherb -L` – ~~Prints a block of license text to the terminal.~~ **[not implemented]**
 
-It should be noticed that the commands `-h,-V,-L` are all blocking and will prevent the usage of `-q,-d`.
+It should be noted that the commands `-h,-V,-L` are all blocking and will prevent the usage of `-q,-d`.
 
 ## Install
 [Download]() the binary and put it anywhere on your system that is connected to your [`%PATH%`](https://stackoverflow.com/a/28778358/64949).
