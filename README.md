@@ -4,12 +4,12 @@
 ## Usage
 Below are examples of how to use all commands inside of `sherb`...
 
-* `sherb` -- Clears the entire recycle bin. Outputs a beep once finished (if you have system sounds on).
-* `sherb -q` -- Silently clears the entire recycle bin.
-* `sherb -d a,b,...` -- Clears the recycle bin of files from the specified drives.
-* `sherb -h` -- ~~Prints a some extended help information in order to assist the user.~~ **[not implemented]**
-* `sherb -V` -- Prints the current sherb version to the terminal.
-* `sherb -L` -- ~~Prints a block of license text to the terminal.~~ **[not implemented]**
+* `sherb` – Clears the entire recycle bin. Outputs a beep once finished (if you have system sounds on).
+* `sherb -q` – Silently clears the entire recycle bin.
+* `sherb -d a,b,...` – Clears the recycle bin of files from the specified drives.
+* `sherb -h` – ~~Prints a some extended help information in order to assist the user.~~ **[not implemented]**
+* `sherb -V` – Prints the current sherb version to the terminal.
+* `sherb -L` – ~~Prints a block of license text to the terminal.~~ **[not implemented]**
 
 It should be noticed that the commands `-h,-V,-L` are all blocking and will prevent the usage of `-q,-d`.
 
