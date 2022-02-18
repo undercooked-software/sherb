@@ -22,20 +22,23 @@
 # define SHEmptyRecycleBin    SHEmptyRecycleBinA
 #endif
 
-// <windows.h> can't compile with /Za flag to enforce c89.
-// The only work around I found was to create separate compilation units.
+/* <windows.h> can't compile with /Za flag to enforce c89.
+ * The only work around I found was to create separate compilation units.
+ */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-// WIN32_LEAN_AND_MEAN forces no inclusion of shellapi.h, among other things.
-// Redefine the few constants we need.
+/* WIN32_LEAN_AND_MEAN forces no inclusion of shellapi.h, among other things.
+ * Redefine the few constants we need.
+ */
 #define SHERB_NOCONFIRMATION  1
 #define SHERB_NOPROGRESSUI    2
 #define SHERB_NOSOUND         4
 
-// https://stackoverflow.com/a/2348447 - WINAPI is __stdcall
-// https://tinyurl.com/yckp42s2 - EmptyRecycleBin returns HRESULT
-// https://stackoverflow.com/a/46457146 - LPCTSTR changes on UNICODE define
+/* https://stackoverflow.com/a/2348447 - WINAPI is __stdcall
+ * https://tinyurl.com/yckp42s2 - EmptyRecycleBin returns HRESULT
+ * https://stackoverflow.com/a/46457146 - LPCTSTR changes on UNICODE define
+ */
 typedef HRESULT   (WINAPI *pSHEmptyRecycleBin)(HWND, LPCTSTR, DWORD);
 typedef LPWSTR *  (WINAPI *pCommandLineToArgvW)(LPCWSTR, int *);
 
@@ -60,11 +63,11 @@ SHERB_WriteConsole(LPCTSTR str) {
   WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
 }
 
-// LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define
+/* LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define */
 int
 SHERB_main(int argc, LPTSTR argv[]) {
-  pSHEmptyRecycleBin sherb;
   enum { AB_LEN = 26, DDR_LEN = 51 };
+  pSHEmptyRecycleBin sherb;
   TCHAR drive[AB_LEN] = {0};
   b32 quietFlag = 0;
   b32 driveFlag = 0;
@@ -95,20 +98,20 @@ SHERB_main(int argc, LPTSTR argv[]) {
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
         return SHERB_WriteConsole(SHERB_USAGE);
-      // arg[1] is -d
+      /* arg[1] is -d */
       driveFlag = 1;
       ++index;
     }
 
-    // Extra args we don't want.
+    /* Extra args we don't want. */
     if (driveFlag) {
       if (index+1 != argc)
         return SHERB_WriteConsole(SHERB_USAGE);
-      // Check if delimited drive string contains more characters than permitted.
+      /* Check if delimited drive string contains more characters than permitted. */
       ddrLen = lstrlen(argv[index]);
       if (ddrLen > DDR_LEN)
         return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
-      // Let's santize our string
+      /* Let's santize our string */
       {
         i32 c, i;
         c = i = 0;
@@ -141,7 +144,7 @@ SHERB_main(int argc, LPTSTR argv[]) {
     TCHAR path[4] = { '?', ':', '\\', '\0', };
     const DWORD dwFlags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI;
     if (IS_TERMINATOR(drive[0])) {
-      sherb(0, 0, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags); 
+      sherb(0, 0, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
     } else {
       path[0] = *d;
       sherb(0, path, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
@@ -154,21 +157,22 @@ SHERB_main(int argc, LPTSTR argv[]) {
     }
   }
 
-  // TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork?
+  /* TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork? */
   if (!quietFlag)
     Sleep(1000);
 }
 
-// TODO(sammynilla): Write our own custom solution based on our data needs.
-// The version taken here is modified from the WINE project.
-// It's a modification of the CommandLineToArgvW implementation.
+/* TODO(sammynilla): Write our own custom solution based on our data needs.
+ * The version taken here is modified from the WINE project.
+ * It's a modification of the CommandLineToArgvW implementation.
+ */
 #ifndef UNICODE
   #include "CommandLineToArgvA.c"
 #endif
 
 int
 _init_args(LPTSTR **argv) {
-  int argc = 0;
+  int argc;
 
 #ifdef UNICODE
   pCommandLineToArgvW CommandLineToArgvW;
@@ -176,7 +180,7 @@ _init_args(LPTSTR **argv) {
     (pCommandLineToArgvW)GetProcAddress(SHERB_SHELL32,
                                         MAKE_CHARS(CommandLineToArgv));
   if (!CommandLineToArgvW)
-    return argc; // argc is 0 here.
+    return 0;
 #endif
 
   *argv = CommandLineToArgv(GetCommandLine(), &argc);
@@ -202,12 +206,5 @@ SHERB_mainCRTStartup(void) {
   if (!argc)
     ExitProcess(GetLastError());
   ret = SHERB_main(argc, argv);
-  /* NOTE (sammynilla):
-   * CommandLineToArgv(A/W) both use LocalAlloc to designate a contiginous block
-   * of memory that is used store our argument strings.
-   * LocalFree is used to free that memory, but doesn't a program that finishes
-   * its execution already release it's own memory? It may not be necessary.
-   */
-  LocalFree(argv);
   ExitProcess(ret);
 }
