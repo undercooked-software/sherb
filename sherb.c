@@ -1,7 +1,11 @@
 
+#include <stdint.h>
+
 #define global static
-#define i32 int
-#define b32 int
+
+#define i32 int32_t
+#define b32 i32
+
 #define elif else if
 
 #define MAKE_CHARS(x)   MAKE_CHARS_(x)
@@ -149,7 +153,7 @@ SHERB_main(int argc, LPTSTR argv[]) {
       path[0] = *d;
       sherb(0, path, (quietFlag) ? (dwFlags | SHERB_NOSOUND) : dwFlags);
       d++;
-      while (*d && !IS_TERMINATOR(*d)) {
+      while (*d) {
         path[0] = *d;
         sherb(0, path, dwFlags | SHERB_NOSOUND);
         d++;
