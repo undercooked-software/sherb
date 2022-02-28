@@ -20,7 +20,7 @@ It should be noted that the commands `-h,-V,-L` are all blocking and will preven
 *Coming soon...*
 
 ## License
-`sherb` is licensed under MIT. For more info, see: [LICENSE.md](LICENSE.md)
+`sherb` comes with two licenses (MIT and Unlicense) of which you can choose the one you prefer. For more info, see: [LICENSE](LICENSE)
 
 ## Notes
 This project would not exist without originally running into the [empty-recycle-bin](https://github.com/sindresorhus/empty-recycle-bin) while browsing the [Chocolatey](https://chocolatey.org/) community package repository. Our reasons for development were more than likely completely different, and thus `sherb` was produced.
