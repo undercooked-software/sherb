@@ -1,4 +1,4 @@
-# [SH]ell [E]mpty [R]ecycle [B]in (sherb)
+# [SH]ell [E]mpties [R]ecycle [B]in (sherb)
 `sherb` was designed with one goal in mind; to provide a quick and simple way to clean out your system's recycle bin via the terminal. The application was developed using [C](#) and currently only supports running on the Windows operating system. Due to stripping out the use of [C](#) runtime libraries and having such a small code footprint, our application comes out at a very tiny **6kb** of size.
 
 ## Usage
