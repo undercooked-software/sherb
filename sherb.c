@@ -28,13 +28,15 @@ SHERB_main(int argc, LPTSTR argv[]) {
   if (argc > 1) {
     i32 index = 1;
     if (!lstrcmp(argv[index], TEXT("-V"))) {
-      return SHERB_WriteConsole(SHERB_VERSION);
+      SHERB_WriteConsole(SHERB_VERSION);
+      return SHERB_WriteConsole(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-L"))) {
       return SHERB_WriteConsole(SHERB_LICENSE);
     } elif (!lstrcmp(argv[index], TEXT("-h"))) {
       SHERB_WriteConsole(SHERB_HEADER);
       SHERB_WriteConsole(SHERB_USAGE);
-      return SHERB_WriteConsole(SHERB_HELP);
+      SHERB_WriteConsole(SHERB_HELP);
+      return SHERB_WriteConsole(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-q"))) {
       quietFlag = 1;
       ++index;
