@@ -7,6 +7,8 @@
 #include "sherb.h"
 #include "sherb_output.h"
 
+#define PRINT(str) SHERB_WriteConsole(TEXT(str))
+
 int
 SHERB_WriteConsole(LPCTSTR str) {
   return WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
@@ -23,20 +25,21 @@ SHERB_main(int argc, LPTSTR argv[]) {
   i32 ddrLen;
 
   if (argc > 4)
-    return SHERB_WriteConsole(SHERB_USAGE);
+    return PRINT(SHERB_USAGE);
 
   if (argc > 1) {
     i32 index = 1;
     if (!lstrcmp(argv[index], TEXT("-V"))) {
-      SHERB_WriteConsole(SHERB_VERSION);
-      return SHERB_WriteConsole(SHERB_WARRANTY);
+      PRINT(SHERB_VERSION);
+      return PRINT(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-L"))) {
-      return SHERB_WriteConsole(SHERB_LICENSE);
+      PRINT(SHERB_HEADER);
+      return PRINT(SHERB_LICENSE);
     } elif (!lstrcmp(argv[index], TEXT("-h"))) {
-      SHERB_WriteConsole(SHERB_HEADER);
-      SHERB_WriteConsole(SHERB_USAGE);
-      SHERB_WriteConsole(SHERB_HELP);
-      return SHERB_WriteConsole(SHERB_WARRANTY);
+      PRINT(SHERB_HEADER);
+      PRINT(SHERB_USAGE);
+      PRINT(SHERB_HELP);
+      return PRINT(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-q"))) {
       quietFlag = 1;
       ++index;
@@ -45,12 +48,12 @@ SHERB_main(int argc, LPTSTR argv[]) {
           driveFlag = 1;
           ++index;
         } else {
-          return SHERB_WriteConsole(SHERB_USAGE);
+          return PRINT(SHERB_USAGE);
         }
       }
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
-        return SHERB_WriteConsole(SHERB_USAGE);
+        return PRINT(SHERB_USAGE);
       /* arg[1] is -d */
       driveFlag = 1;
       ++index;
@@ -59,11 +62,11 @@ SHERB_main(int argc, LPTSTR argv[]) {
     /* Extra args we don't want. */
     if (driveFlag) {
       if (index+1 != argc)
-        return SHERB_WriteConsole(SHERB_USAGE);
+        return PRINT(SHERB_USAGE);
       /* Check if delimited drive string contains more characters than permitted. */
       ddrLen = lstrlen(argv[index]);
       if (ddrLen > DDR_LEN)
-        return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
+        return PRINT(SHERB_BAD_DDR_LEN);
       /* Let's santize our string */
       {
         i32 c, i;
@@ -72,13 +75,13 @@ SHERB_main(int argc, LPTSTR argv[]) {
           switch ((c % 2)) {
             case 0: {
               if (!IsCharAlpha(argv[index][c]))
-                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+                return PRINT(SHERB_MALFORMED_DDR);
               drive[i] = argv[index][c];
               ++i;
             } break;
             case 1: {
               if (!IS_DELIMETER(argv[index][c]))
-                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+                return PRINT(SHERB_MALFORMED_DDR);
             } break;
           }
         }
