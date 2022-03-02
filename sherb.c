@@ -155,6 +155,18 @@ SHERB_mainCRTStartup(void) {
   if ((!SHERB_OUTPUT_HANDLE) && (SHERB_OUTPUT_HANDLE != INVALID_HANDLE_VALUE))
     ExitProcess(GetLastError());
 
+#ifdef VT_ENABLE
+  {
+    DWORD mode = 0;
+    if (!GetConsoleMode(SHERB_OUTPUT_HANDLE, &mode))
+      ExitProcess(GetLastError());
+    
+    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    if (!SetConsoleMode(SHERB_OUTPUT_HANDLE, mode))
+      ExitProcess(GetLastError());
+  }
+#endif
+
   SHERB_SHELL32 = LoadLibrary(TEXT("shell32.dll"));
   if (!SHERB_SHELL32)
     ExitProcess(GetLastError());
