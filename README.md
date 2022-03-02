@@ -1,4 +1,4 @@
-# [SH]ell [E]mpties [R]ecycle [B]in (sherb)
+# SH:ell E:mpties R:ecycle B:in (sherb)
 `sherb` was designed with one goal in mind; to provide a quick and simple way to clean out your system's recycle bin via the terminal. The application was developed using [C](#) and currently only supports running on the Windows operating system. Due to stripping out the use of [C](#) runtime libraries and having such a small code footprint, our application comes out at a very tiny **6kb** of size.
 
 ## Usage
@@ -7,9 +7,9 @@ Below are examples of how to use all commands inside of `sherb`...
 * `sherb` – Clears the entire recycle bin. Outputs a beep once finished (if you have system sounds on).
 * `sherb -q` – Silently clears the entire recycle bin.
 * `sherb -d a,b,...` – Clears the recycle bin of files from the specified drives.
-* `sherb -h` – ~~Prints a some extended help information in order to assist the user.~~ **[not implemented]**
+* `sherb -h` – Prints a some extended help information in order to assist the user.
 * `sherb -V` – Prints the current sherb version to the terminal.
-* `sherb -L` – ~~Prints a block of license text to the terminal.~~ **[not implemented]**
+* `sherb -L` – Prints a block of license text to the terminal.
 
 It should be noted that the commands `-h,-V,-L` are all blocking and will prevent the usage of `-q,-d`.
 
