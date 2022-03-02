@@ -1,70 +1,17 @@
 
-#include <stdint.h>
+#include "base_types.h"
 
-#define global static
-
-#define i32 int32_t
-#define b32 i32
-
-#define elif else if
-
-#define MAKE_CHARS(x)   MAKE_CHARS_(x)
-#define MAKE_CHARS_(x)  #x
-
-#define IS_DELIMETER(c)   (c == ',')
-#define IS_TERMINATOR(c)  (c == '\0')
-
-#ifdef UNICODE
-# define SHERB_main           wmain
-# define SHERB_mainCRTStartup wmainCRTStartup
-# define CommandLineToArgv    CommandLineToArgvW
-# define SHEmptyRecycleBin    SHEmptyRecycleBinW
-#else
-# define SHERB_main           main
-# define SHERB_mainCRTStartup mainCRTStartup
-# define CommandLineToArgv    CommandLineToArgvA_wine
-# define SHEmptyRecycleBin    SHEmptyRecycleBinA
-#endif
-
-/* <windows.h> can't compile with /Za flag to enforce c89.
- * The only work around I found was to create separate compilation units.
- */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-/* WIN32_LEAN_AND_MEAN forces no inclusion of shellapi.h, among other things.
- * Redefine the few constants we need.
- */
-#define SHERB_NOCONFIRMATION  1
-#define SHERB_NOPROGRESSUI    2
-#define SHERB_NOSOUND         4
+#include "sherb.h"
+#include "sherb_output.h"
 
-/* https://stackoverflow.com/a/2348447 - WINAPI is __stdcall
- * https://tinyurl.com/yckp42s2 - EmptyRecycleBin returns HRESULT
- * https://stackoverflow.com/a/46457146 - LPCTSTR changes on UNICODE define
- */
-typedef HRESULT   (WINAPI *pSHEmptyRecycleBin)(HWND, LPCTSTR, DWORD);
-typedef LPWSTR *  (WINAPI *pCommandLineToArgvW)(LPCWSTR, int *);
+#define PRINT(str) SHERB_WriteConsole(TEXT(str))
 
-global HANDLE   SHERB_OUTPUT_HANDLE;
-global HMODULE  SHERB_SHELL32;
-
-global LPCTSTR SHERB_USAGE =
-  TEXT("Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]\n");
-global LPCTSTR SHERB_BAD_DDR_LEN =
-  TEXT("ERROR: Your delimited drive list contains more than 51 characters.\n");
-global LPCTSTR SHERB_MALFORMED_DDR =
-  TEXT("ERROR: Your delimited drive list is malformed.\n");
-global LPCTSTR SHERB_HELP =
-  TEXT("Help Text\n");
-global LPCTSTR SHERB_LICENSE =
-  TEXT("License Text\n");
-global LPCTSTR SHERB_VERSION =
-  TEXT("SHERB 1.0.0\n");
-
-void
+int
 SHERB_WriteConsole(LPCTSTR str) {
-  WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
+  return WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
 }
 
 /* LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define */
@@ -78,16 +25,21 @@ SHERB_main(int argc, LPTSTR argv[]) {
   i32 ddrLen;
 
   if (argc > 4)
-    return SHERB_WriteConsole(SHERB_USAGE);
+    return PRINT(SHERB_USAGE);
 
   if (argc > 1) {
     i32 index = 1;
     if (!lstrcmp(argv[index], TEXT("-V"))) {
-      return SHERB_WriteConsole(SHERB_VERSION);
+      PRINT(SHERB_VERSION);
+      return PRINT(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-L"))) {
-      return SHERB_WriteConsole(SHERB_LICENSE);
+      PRINT(SHERB_HEADER);
+      return PRINT(SHERB_LICENSE);
     } elif (!lstrcmp(argv[index], TEXT("-h"))) {
-      return SHERB_WriteConsole(SHERB_HELP);
+      PRINT(SHERB_HEADER);
+      PRINT(SHERB_USAGE);
+      PRINT(SHERB_HELP);
+      return PRINT(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-q"))) {
       quietFlag = 1;
       ++index;
@@ -96,12 +48,12 @@ SHERB_main(int argc, LPTSTR argv[]) {
           driveFlag = 1;
           ++index;
         } else {
-          return SHERB_WriteConsole(SHERB_USAGE);
+          return PRINT(SHERB_USAGE);
         }
       }
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
-        return SHERB_WriteConsole(SHERB_USAGE);
+        return PRINT(SHERB_USAGE);
       /* arg[1] is -d */
       driveFlag = 1;
       ++index;
@@ -110,11 +62,11 @@ SHERB_main(int argc, LPTSTR argv[]) {
     /* Extra args we don't want. */
     if (driveFlag) {
       if (index+1 != argc)
-        return SHERB_WriteConsole(SHERB_USAGE);
+        return PRINT(SHERB_USAGE);
       /* Check if delimited drive string contains more characters than permitted. */
       ddrLen = lstrlen(argv[index]);
       if (ddrLen > DDR_LEN)
-        return SHERB_WriteConsole(SHERB_BAD_DDR_LEN);
+        return PRINT(SHERB_BAD_DDR_LEN);
       /* Let's santize our string */
       {
         i32 c, i;
@@ -123,13 +75,13 @@ SHERB_main(int argc, LPTSTR argv[]) {
           switch ((c % 2)) {
             case 0: {
               if (!IsCharAlpha(argv[index][c]))
-                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+                return PRINT(SHERB_MALFORMED_DDR);
               drive[i] = argv[index][c];
               ++i;
             } break;
             case 1: {
               if (!IS_DELIMETER(argv[index][c]))
-                return SHERB_WriteConsole(SHERB_MALFORMED_DDR);
+                return PRINT(SHERB_MALFORMED_DDR);
             } break;
           }
         }
@@ -139,7 +91,7 @@ SHERB_main(int argc, LPTSTR argv[]) {
 
   sherb =
     (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32,
-                                       MAKE_CHARS(SHEmptyRecycleBin));
+                                       stringify(SHEmptyRecycleBin));
   if (!sherb)
     return GetLastError();
 
@@ -164,6 +116,8 @@ SHERB_main(int argc, LPTSTR argv[]) {
   /* TODO(sammynilla): Figure out how to avoid this sleep. Threading? Fork? */
   if (!quietFlag)
     Sleep(1000);
+
+  return 0;
 }
 
 /* TODO(sammynilla): Write our own custom solution based on our data needs.
@@ -182,7 +136,7 @@ _init_args(LPTSTR **argv) {
   pCommandLineToArgvW CommandLineToArgvW;
   CommandLineToArgvW =
     (pCommandLineToArgvW)GetProcAddress(SHERB_SHELL32,
-                                        MAKE_CHARS(CommandLineToArgv));
+                                        stringify(CommandLineToArgv));
   if (!CommandLineToArgvW)
     return 0;
 #endif
@@ -210,5 +164,6 @@ SHERB_mainCRTStartup(void) {
   if (!argc)
     ExitProcess(GetLastError());
   ret = SHERB_main(argc, argv);
+  /* No LocalFree because we perform one task and then kill the process. */
   ExitProcess(ret);
 }
