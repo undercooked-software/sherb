@@ -5,7 +5,7 @@
 #include <windows.h>
 
 #include "sherb.h"
-#include "sherb_output.h"
+#include "sherb_data.h"
 
 #define PRINT(str) SHERB_WriteConsole(TEXT(str))
 
@@ -17,14 +17,14 @@ SHERB_WriteConsole(LPCTSTR str) {
 /* LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define */
 int
 SHERB_main(int argc, LPTSTR argv[]) {
-  enum { AB_LEN = 26, DDR_LEN = 51 };
+  enum { MAX_ARGS = 4, AB_LEN = 26, DDR_LEN = 51 };
   pSHEmptyRecycleBin sherb;
   TCHAR drive[AB_LEN] = {0};
   b32 quietFlag = 0;
   b32 driveFlag = 0;
   i32 ddrLen;
 
-  if (argc > 4)
+  if (argc > MAX_ARGS)
     return PRINT(SHERB_USAGE);
 
   if (argc > 1) {
@@ -44,30 +44,24 @@ SHERB_main(int argc, LPTSTR argv[]) {
       quietFlag = 1;
       ++index;
       if (index != argc) {
-        if (!lstrcmp(argv[index], TEXT("-d"))) {
-          driveFlag = 1;
-          ++index;
-        } else {
+        if (lstrcmp(argv[index], TEXT("-d")) != 0)
           return PRINT(SHERB_USAGE);
-        }
+        driveFlag = 1;
+        ++index;
       }
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
         return PRINT(SHERB_USAGE);
-      /* arg[1] is -d */
       driveFlag = 1;
       ++index;
     }
 
-    /* Extra args we don't want. */
     if (driveFlag) {
-      if (index+1 != argc)
-        return PRINT(SHERB_USAGE);
-      /* Check if delimited drive string contains more characters than permitted. */
+      /* Check if delimited drive string contains too many characters. */
       ddrLen = lstrlen(argv[index]);
       if (ddrLen > DDR_LEN)
         return PRINT(SHERB_BAD_DDR_LEN);
-      /* Let's santize our string */
+      /* Process and sanitize our argument drive list. */
       {
         i32 c, i;
         c = i = 0;
@@ -89,9 +83,8 @@ SHERB_main(int argc, LPTSTR argv[]) {
     }
   }
 
-  sherb =
-    (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32,
-                                       stringify(SHEmptyRecycleBin));
+  sherb = (pSHEmptyRecycleBin)GetProcAddress(SHERB_SHELL32,
+                                             stringify(SHEmptyRecycleBin));
   if (!sherb)
     return GetLastError();
 

@@ -1,33 +1,10 @@
 
-#ifndef SHERB_OUTPUT_H
-#define SHERB_OUTPUT_H
+#ifndef SHERB_DATA_H
+#define SHERB_DATA_H
 
-/* NOTE (sammynilla): Below link is info how to use VT100 formatting.
- * http://xn--rpa.cc/irl/term.html
- */
+#include "vt_fmt.h"
 
-/* NOTE (sammynilla):
- * col formula is 16 + 36r + 6g + b where rgb are integers between 0 and 5.
- * indicies 232 through 255 are a grayscale ramp.
- */
-#define ANSI_ESC    "\x1b"
-#define FGCOL(col)  "38;5;" #col
-
-#ifdef VT_ENABLE
-# define FMT(style)  ANSI_ESC "[" style "m"
-#else
-# define FMT(style) ""
-#endif
-
-/* Styles */
-#define CORNFLOWER  FGCOL(111)
-#define RED         FGCOL(124)
-#define PEA         FGCOL(113)
-#define PINK        FGCOL(211)
-#define YELLOW      FGCOL(011)
-#define PLAIN       ";"
-
-#define SHERB_LATEST_UPDATE   "March 2nd, 2022"
+#define SHERB_LATEST_RELEASE  "March 3rd, 2022"
 #define SHERB_VERSION_NUMBER  "1.2.0"
 #define SHERB_DEVELOPER       "Undercooked Software"
 
@@ -36,9 +13,9 @@
   \n\t\t\t  Copyright (C) 2021 - 2022\
   \nSHERB " SHERB_VERSION_NUMBER "\t\t    "
 #define SHERB_HEADER \
-  FMT(PEA)    SHERB_HEADER_CONTENTS      FMT(PLAIN) \
-  FMT(YELLOW) SHERB_DEVELOPER     "\t\t" FMT(PLAIN) \
-  FMT(PEA)    SHERB_LATEST_UPDATE "\n\n" FMT(PLAIN)
+  FMT(PEA)    SHERB_HEADER_CONTENTS        FMT(PLAIN) \
+  FMT(YELLOW) SHERB_DEVELOPER       "\t\t" FMT(PLAIN) \
+  FMT(PEA)    SHERB_LATEST_RELEASE  "\n\n" FMT(PLAIN)
 
 #define SHERB_USAGE \
   "Usage: sherb(.exe) [-hVL] [-q] [-d a,b,...]\n"
@@ -72,4 +49,4 @@
 #define SHERB_WARRANTY \
   "SHERB comes with ABSOLUTELY NO WARRANTY; for details type 'sherb -L'.\n"
 
-#endif /* SHERB_OUTPUT_H */
+#endif /* SHERB_DATA_H */

@@ -2,10 +2,12 @@
 #ifndef BASE_TYPES_H
 #define BASE_TYPES_H
 
+#include <stdint.h>
+
 #define global static
 
-#define i32 int
-#define b32 i32
+#define i32 int32_t
+#define b32 int32_t
 
 /* Save the fingies. */
 #define elif else if
