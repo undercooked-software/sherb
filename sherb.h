@@ -28,7 +28,6 @@
 typedef HRESULT   (WINAPI *pSHEmptyRecycleBin)(HWND, LPCTSTR, DWORD);
 typedef LPWSTR *  (WINAPI *pCommandLineToArgvW)(LPCWSTR, int *);
 
-global HANDLE   SHERB_OUTPUT_HANDLE;
 global HMODULE  SHERB_SHELL32;
 
 #endif /* SHERB_H */

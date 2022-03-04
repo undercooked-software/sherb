@@ -6,13 +6,7 @@
 
 #include "sherb.h"
 #include "sherb_data.h"
-
-#define PRINT(str) SHERB_WriteConsole(TEXT(str))
-
-int
-SHERB_WriteConsole(LPCTSTR str) {
-  return WriteConsole(SHERB_OUTPUT_HANDLE, str, lstrlen(str), 0, 0);
-}
+#include "terminal.h"
 
 /* LPTSTR is equivalant to char* or wchar_t* depending on UNICODE define */
 int
@@ -25,42 +19,60 @@ SHERB_main(int argc, LPTSTR argv[]) {
   i32 ddrLen;
 
   if (argc > MAX_ARGS)
-    return PRINT(SHERB_USAGE);
+    return term_puts(SHERB_USAGE);
 
   if (argc > 1) {
     i32 index = 1;
     if (!lstrcmp(argv[index], TEXT("-V"))) {
-      PRINT(SHERB_VERSION);
-      return PRINT(SHERB_WARRANTY);
+      term_puts(SHERB_VERSION);
+      return term_puts(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-L"))) {
-      PRINT(SHERB_HEADER);
-      return PRINT(SHERB_LICENSE);
+      term_cfputs(9,
+        FG_WHITE, SHERB_HEADER_TITLE,
+        FG_YELLOW, SHERB_HEADER_DEVELOPER,
+        FG_WHITE, SHERB_HEADER_VERSION, SHERB_HEADER_COPYRIGHT, SHERB_HEADER_RELEASE,
+        FG_RESET
+      );
+      term_puts(SHERB_LICENSE);
+      return term_cfputs(3, FG_CYAN, SHERB_REPOSITORY, FG_RESET);
     } elif (!lstrcmp(argv[index], TEXT("-h"))) {
-      PRINT(SHERB_HEADER);
-      PRINT(SHERB_USAGE);
-      PRINT(SHERB_HELP);
-      return PRINT(SHERB_WARRANTY);
+      term_cfputs(9,
+        FG_WHITE, SHERB_HEADER_TITLE,
+        FG_YELLOW, SHERB_HEADER_DEVELOPER,
+        FG_WHITE, SHERB_HEADER_VERSION, SHERB_HEADER_COPYRIGHT, SHERB_HEADER_RELEASE,
+        FG_RESET
+      );
+      term_puts(SHERB_USAGE);
+      term_cfputs(3, FG_LIGHTGREEN, "\nCommands:", FG_RESET);
+      term_puts(SHERB_HELP_COMMANDS);
+      term_cfputs(3, FG_LIGHTGREEN, "\nOptions:",  FG_RESET);
+      term_puts(SHERB_HELP_OPTIONS);
+      return term_puts(SHERB_WARRANTY);
     } elif (!lstrcmp(argv[index], TEXT("-q"))) {
       quietFlag = 1;
       ++index;
       if (index != argc) {
         if (lstrcmp(argv[index], TEXT("-d")) != 0)
-          return PRINT(SHERB_USAGE);
+          return term_puts(SHERB_USAGE);
         driveFlag = 1;
         ++index;
       }
     } else {
       if (lstrcmp(argv[index], TEXT("-d")) != 0)
-        return PRINT(SHERB_USAGE);
+        return term_puts(SHERB_USAGE);
       driveFlag = 1;
       ++index;
     }
 
     if (driveFlag) {
+      if (index == argc)
+        return term_cfputs(4, FG_LIGHTRED, "Error: ",
+                              FG_RESET, SHERB_MISSING_DDR);
       /* Check if delimited drive string contains too many characters. */
       ddrLen = lstrlen(argv[index]);
       if (ddrLen > DDR_LEN)
-        return PRINT(SHERB_BAD_DDR_LEN);
+        return term_cfputs(4, FG_LIGHTRED, "Error: ",
+                              FG_RESET, SHERB_BAD_DDR_LEN);
       /* Process and sanitize our argument drive list. */
       {
         i32 c, i;
@@ -69,13 +81,15 @@ SHERB_main(int argc, LPTSTR argv[]) {
           switch ((c % 2)) {
             case 0: {
               if (!IsCharAlpha(argv[index][c]))
-                return PRINT(SHERB_MALFORMED_DDR);
+                return term_cfputs(4, FG_LIGHTRED, "Error: ",
+                                      FG_RESET, SHERB_MALFORMED_DDR);
               drive[i] = argv[index][c];
               ++i;
             } break;
             case 1: {
               if (!IS_DELIMETER(argv[index][c]))
-                return PRINT(SHERB_MALFORMED_DDR);
+                return term_cfputs(4, FG_LIGHTRED, "Error: ",
+                                      FG_RESET, SHERB_MALFORMED_DDR);
             } break;
           }
         }
@@ -144,21 +158,15 @@ SHERB_mainCRTStartup(void) {
   int argc;
   int ret;
 
-  SHERB_OUTPUT_HANDLE = GetStdHandle(STD_OUTPUT_HANDLE);
-  if ((!SHERB_OUTPUT_HANDLE) && (SHERB_OUTPUT_HANDLE != INVALID_HANDLE_VALUE))
+  term.output_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  if ((!term.output_handle) && (term.output_handle != INVALID_HANDLE_VALUE))
     ExitProcess(GetLastError());
 
-#ifdef VT_ENABLE
   {
-    DWORD mode = 0;
-    if (!GetConsoleMode(SHERB_OUTPUT_HANDLE, &mode))
-      ExitProcess(GetLastError());
-    
-    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    if (!SetConsoleMode(SHERB_OUTPUT_HANDLE, mode))
-      ExitProcess(GetLastError());
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(term.output_handle, &csbi);
+    term.base_style = csbi.wAttributes;
   }
-#endif
 
   SHERB_SHELL32 = LoadLibrary(TEXT("shell32.dll"));
   if (!SHERB_SHELL32)
